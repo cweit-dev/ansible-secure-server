@@ -1,0 +1,4 @@
+# Edit only these three lines
+admin_user: carl
+admin_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... carl@weitdev.com"
+management_subnet: "203.0.113.0/24"   # replace with your actual management IP range

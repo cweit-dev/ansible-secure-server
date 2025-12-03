@@ -1,0 +1,72 @@
+---
+- name: Secure baseline for Ubuntu 24.04
+  hosts: lab
+  become: yes
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Create administrative user
+      user:
+        name: "{{ admin_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+
+    - name: Install administrative SSH key
+      authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ admin_pubkey }}"
+
+    - name: Disable password authentication and root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+      notify: restart ssh
+
+    - name: Install and configure fail2ban
+      apt:
+        name: fail2ban
+        state: present
+      notify: restart fail2ban
+
+    - name: Configure UFW — allow SSH only from management subnet
+      ufw:
+        rule: allow
+        src: "{{ management_subnet }}"
+        port: 22
+        proto: tcp
+      notify: reload ufw
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Enable unattended security updates
+      apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Set timezone to UTC
+      timezone:
+        name: UTC
+
+  handlers:
+    - name: restart ssh
+      service:
+        name: ssh
+        state: restarted
+
+    - name: restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted
+
+    - name: reload ufw
+      ufw:
+        state: reloaded
